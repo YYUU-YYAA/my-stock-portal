@@ -1,0 +1,56 @@
+{
+  "categories": {
+    "portfolio": [
+      "COIN",
+      "HIVE",
+      "SOXL"
+    ],
+    "テック株 🤖": [
+      "AAPL",
+      "MSFT",
+      "NVDA",
+      "GOOGL",
+      "META"
+    ],
+    "日本株 🇯🇵": [
+      "7203.T",
+      "6758.T",
+      "7974.T",
+      "9984.T"
+    ],
+    "ETF 📊": [
+      "SPY",
+      "QQQ",
+      "GLD"
+    ],
+    "高配当 💰": [
+      "JNJ",
+      "KO",
+      "VZ"
+    ],
+    "BTC": [
+      "HIVE",
+      "COIN"
+    ]
+  },
+  "news_search": {
+    "AAPL": true,
+    "MSFT": true,
+    "NVDA": true,
+    "GOOGL": true,
+    "META": true,
+    "7203.T": true,
+    "6758.T": true,
+    "7974.T": false,
+    "9984.T": true,
+    "SPY": false,
+    "QQQ": false,
+    "GLD": false,
+    "JNJ": true,
+    "KO": false,
+    "VZ": false,
+    "HIVE": true,
+    "COIN": true,
+    "SOXL": true
+  }
+}
