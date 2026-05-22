@@ -361,23 +361,31 @@ def generate_ai_digest(headlines: list, digest_type: str = "総合") -> str:
     prompt_template = DIGEST_PROMPTS.get(digest_type, DIGEST_PROMPTS["総合"])
     prompt = prompt_template.format(headlines=h_text)
 
-    try:
-        client = anthropic.Anthropic(api_key=api_key)
-        resp = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=800,
-            system=[{
-                "type": "text",
-                "text": "あなたは投資家・VCのための日本語ニュースアシスタントです。簡潔・的確・実用的な分析を提供します。",
-                "cache_control": {"type": "ephemeral"},
-            }],
-            messages=[{"role": "user", "content": prompt}],
-        )
-        result = resp.content[0].text
-        _file_cache_set(cache_key, result)
-        return result
-    except Exception as e:
-        return f"❌ 生成エラー: {str(e)[:100]}"
+    import time
+    client = anthropic.Anthropic(api_key=api_key)
+    for attempt in range(3):
+        try:
+            resp = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=800,
+                system=[{
+                    "type": "text",
+                    "text": "あなたは投資家・VCのための日本語ニュースアシスタントです。簡潔・的確・実用的な分析を提供します。",
+                    "cache_control": {"type": "ephemeral"},
+                }],
+                messages=[{"role": "user", "content": prompt}],
+            )
+            result = resp.content[0].text
+            _file_cache_set(cache_key, result)
+            return result
+        except anthropic.APIStatusError as e:
+            if e.status_code == 529 and attempt < 2:
+                time.sleep(10 * (attempt + 1))
+            else:
+                return f"❌ 生成エラー: {str(e)[:100]}"
+        except Exception as e:
+            return f"❌ 生成エラー: {str(e)[:100]}"
+    return "❌ サーバー混雑のため生成できませんでした。しばらくしてから再試行してください。"
 
 
 def _build_stock_prompt(data: dict, news_items: list) -> tuple[str, str]:
@@ -428,22 +436,33 @@ def generate_stock_analysis_stream(data: dict, news_items: list):
 
     system_msg, prompt = _build_stock_prompt(data, news_items)
 
-    try:
-        client = anthropic.Anthropic(api_key=api_key)
-        with client.messages.stream(
-            model="claude-sonnet-4-6",
-            max_tokens=8000,
-            system=[{
-                "type": "text",
-                "text": system_msg,
-                "cache_control": {"type": "ephemeral"},
-            }],
-            messages=[{"role": "user", "content": prompt}],
-        ) as stream:
-            for text in stream.text_stream:
-                yield text
-    except Exception as e:
-        yield f"❌ 分析生成エラー: {str(e)[:200]}"
+    import time
+    client = anthropic.Anthropic(api_key=api_key)
+    for attempt in range(3):
+        try:
+            with client.messages.stream(
+                model="claude-sonnet-4-6",
+                max_tokens=8000,
+                system=[{
+                    "type": "text",
+                    "text": system_msg,
+                    "cache_control": {"type": "ephemeral"},
+                }],
+                messages=[{"role": "user", "content": prompt}],
+            ) as stream:
+                for text in stream.text_stream:
+                    yield text
+            return
+        except anthropic.APIStatusError as e:
+            if e.status_code == 529 and attempt < 2:
+                yield f"\n⏳ サーバー混雑中... {10*(attempt+1)}秒後に再試行します ({attempt+1}/3)\n"
+                time.sleep(10 * (attempt + 1))
+            else:
+                yield f"❌ 分析生成エラー: {str(e)[:200]}"
+                return
+        except Exception as e:
+            yield f"❌ 分析生成エラー: {str(e)[:200]}"
+            return
 
 
 def generate_stock_analysis(data: dict, news_items: list) -> str:
