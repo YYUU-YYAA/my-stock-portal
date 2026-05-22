@@ -25,83 +25,29 @@ MEDIA_SOURCES = {
         "url": "https://news.google.com/rss/search?q=bloomberg+market+finance&hl=en&gl=US&ceid=US:en",
         "icon": "💹", "category": "経済",
     },
-    "CNBC": {
-        "url": "https://www.cnbc.com/id/100003114/device/rss/rss.html",
-        "icon": "📺", "category": "経済",
-    },
     "Yahoo Finance": {
         "url": "https://finance.yahoo.com/news/rssindex",
         "icon": "📈", "category": "経済",
     },
-    "WSJ (GNews)": {
-        "url": "https://news.google.com/rss/search?q=site:wsj.com+market&hl=en&gl=US&ceid=US:en",
-        "icon": "📰", "category": "経済",
-    },
-    "FT (GNews)": {
-        "url": "https://news.google.com/rss/search?q=site:ft.com+finance&hl=en&gl=US&ceid=US:en",
-        "icon": "🏦", "category": "経済",
-    },
-    # ──── テクノロジー ────
+    # ──── テクノロジー・VC ────
     "TechCrunch": {
         "url": "https://techcrunch.com/feed/",
         "icon": "💻", "category": "テクノロジー",
-    },
-    "VentureBeat": {
-        "url": "https://venturebeat.com/feed/",
-        "icon": "🚀", "category": "テクノロジー",
-    },
-    "Wired": {
-        "url": "https://www.wired.com/feed/rss",
-        "icon": "⚡", "category": "テクノロジー",
-    },
-    "MIT Tech Review": {
-        "url": "https://www.technologyreview.com/feed/",
-        "icon": "🔬", "category": "テクノロジー",
     },
     "Hacker News": {
         "url": "https://hnrss.org/frontpage",
         "icon": "🖥️", "category": "テクノロジー",
     },
-    "The Verge": {
-        "url": "https://www.theverge.com/rss/index.xml",
-        "icon": "📱", "category": "テクノロジー",
-    },
-    # ──── VC・スタートアップ ────
     "Crunchbase News": {
         "url": "https://news.crunchbase.com/feed/",
         "icon": "💰", "category": "VC",
-    },
-    "TechCrunch 資金調達": {
-        "url": "https://techcrunch.com/tag/funding/feed/",
-        "icon": "💵", "category": "VC",
     },
     "The Bridge JP": {
         "url": "https://thebridge.jp/feed",
         "icon": "🌉", "category": "VC",
     },
-    "Fortune": {
-        "url": "https://fortune.com/feed/",
-        "icon": "🎯", "category": "VC",
-    },
-    # ──── 政治・国際 ────
-    "NHK 政治": {
-        "url": "https://www.nhk.or.jp/rss/news/cat4.xml",
-        "icon": "🏛️", "category": "政治",
-    },
-    "NHK 国際": {
-        "url": "https://www.nhk.or.jp/rss/news/cat6.xml",
-        "icon": "🌍", "category": "政治",
-    },
-    "Google News 政治": {
-        "url": "https://news.google.com/rss/search?q=日本+政治+外交&hl=ja&gl=JP&ceid=JP:ja",
-        "icon": "🗳️", "category": "政治",
-    },
-    "AP News (GNews)": {
-        "url": "https://news.google.com/rss/search?q=site:apnews.com&hl=en&gl=US&ceid=US:en",
-        "icon": "📡", "category": "政治",
-    },
     # ──── 日本語 ────
-    "NHK 総合": {
+    "NHK": {
         "url": "https://www.nhk.or.jp/rss/news/cat0.xml",
         "icon": "🇯🇵", "category": "日本",
     },
@@ -109,49 +55,21 @@ MEDIA_SOURCES = {
         "url": "https://news.google.com/rss/search?q=日経+株価+経済&hl=ja&gl=JP&ceid=JP:ja",
         "icon": "📊", "category": "日本",
     },
-    "Business Insider JP": {
-        "url": "https://www.businessinsider.jp/feed/",
-        "icon": "📑", "category": "日本",
-    },
-    "東洋経済": {
-        "url": "https://toyokeizai.net/list/feed/rss",
-        "icon": "🗾", "category": "日本",
-    },
-    "読売 (GNews)": {
-        "url": "https://news.google.com/rss/search?q=site:yomiuri.co.jp&hl=ja&gl=JP&ceid=JP:ja",
-        "icon": "📝", "category": "日本",
-    },
 }
 
-CATEGORY_ORDER = ["経済", "テクノロジー", "VC", "政治", "日本"]
+CATEGORY_ORDER = ["経済", "テクノロジー", "VC", "日本"]
 
 # ============================================================
 # AIダイジェスト プロンプト
 # ============================================================
 DIGEST_PROMPTS = {
-    "総合": """あなたは投資家・VCとして活躍するユーザーの専任ニュースアシスタントです。
-以下の過去24時間のニュースヘッドラインを基に、1〜2分で読める総合ダイジェストを日本語で作成してください。
+    "総合": """投資家・VC向けニュースを日本語で簡潔にまとめてください。
 
-【優先事項】
-- 株式市場・マクロ経済への影響
-- スタートアップ・VC業界の重要な動き
-- AI・テクノロジーの重要トレンド
-- 投資判断に直結するニュース
+## 🔑 キーポイント（3項目・箇条書き）
+## 📊 市場・経済（2文）
+## 💻 テクノロジー・スタートアップ（2文）
 
-【出力形式】
-## 🔑 今日のキーポイント
-（3〜4項目の箇条書き。最も重要な内容を端的に）
-
-## 📊 経済・市場
-（2〜3文で概況）
-
-## 💻 テクノロジー・スタートアップ
-（2〜3文で概況）
-
-## 🗾 日本
-（1〜2文で重要な日本関連ニュース）
-
-全体で400〜500字以内。
+200字以内。
 
 ヘッドライン:
 {headlines}
@@ -293,7 +211,7 @@ def fetch_feed(name: str, url: str) -> list:
         return []
 
 
-def get_all_headlines(limit_per_source: int = 8) -> list:
+def get_all_headlines(limit_per_source: int = 5) -> list:
     """全ソースのヘッドラインを集約"""
     all_items = []
     for name, cfg in MEDIA_SOURCES.items():
@@ -347,7 +265,7 @@ def generate_ai_digest(headlines: list, digest_type: str = "総合") -> str:
     if not headlines:
         return "ヘッドラインが取得できませんでした。"
 
-    h_text = "\n".join(f"[{h.get('source','')}] {h['title']}" for h in headlines[:40] if h.get("title"))
+    h_text = "\n".join(f"[{h.get('source','')}] {h['title']}" for h in headlines[:20] if h.get("title"))
     cache_key = hashlib.md5(f"{digest_type}:{h_text[:500]}".encode()).hexdigest()[:12]
 
     cached = _file_cache_get(cache_key)
