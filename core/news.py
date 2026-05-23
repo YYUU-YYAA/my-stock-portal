@@ -59,58 +59,59 @@ MEDIA_SOURCES = {
 
 CATEGORY_ORDER = ["経済", "テクノロジー", "VC", "日本"]
 
+# ニッチ・サイエンス情報ソース
+NICHE_SOURCES = {
+    "ScienceDaily": "https://www.sciencedaily.com/rss/top/science.xml",
+    "Quanta Magazine": "https://www.quantamagazine.org/feed/",
+    "Space.com": "https://www.space.com/home/feed/site.xml",
+    "Interesting Engineering": "https://interestingengineering.com/feed",
+}
+
 # ============================================================
 # AIダイジェスト プロンプト
 # ============================================================
 DIGEST_PROMPTS = {
+    "今日のネタ": """あなたは多忙な投資家・VCのための情報キュレーターです。
+以下のニュースと科学情報を基に、1分で全体把握できる日本語ダイジェストを作成してください。
+
+## 📌 今日のキーニュース
+（箇条書き4〜5個。各1文。数字・固有名詞で具体的に。最重要から順に）
+
+## 🔬 今日の話のネタ
+（一般ニュースでは取り上げない面白い・驚くべき話題を2個。各3文。会話のきっかけになる内容）
+
+{custom}
+
+ニュース:
+{headlines}
+
+サイエンス・ニッチ:
+{niche}
+""",
     "総合": """投資家・VC向けニュースを日本語で簡潔にまとめてください。
 
 ## 🔑 キーポイント（3項目・箇条書き）
 ## 📊 市場・経済（2文）
 ## 💻 テクノロジー・スタートアップ（2文）
 
+{custom}
+
 200字以内。
 
 ヘッドライン:
 {headlines}
 """,
-    "経済": """以下のヘッドラインから経済・金融・市場のニュースを分析し、投資判断に役立つ日本語のダイジェストを作成してください（300字以内）。
-
-ヘッドライン:
-{headlines}
+    "経済": """経済・金融・市場ニュースを投資判断に役立つ形で日本語200字以内にまとめてください。箇条書き優先。{custom}\nヘッドライン:\n{headlines}
 """,
-    "テクノロジー": """以下のヘッドラインからテクノロジー・AI・スタートアップのニュースを分析し、投資家・VCとして重要な洞察を含む日本語のダイジェストを作成してください（300字以内）。
-
-ヘッドライン:
-{headlines}
+    "テクノロジー": """テクノロジー・AI・スタートアップのニュースをVC投資家向けに日本語200字以内にまとめてください。{custom}\nヘッドライン:\n{headlines}
 """,
-    "VC": """以下のヘッドラインからVC・スタートアップ・資金調達のニュースを分析し、VC投資家として重要なトレンドや案件情報を日本語でまとめてください（300字以内）。
-
-ヘッドライン:
-{headlines}
+    "VC": """VC・スタートアップ・資金調達のニュースをVC投資家向けに日本語200字以内にまとめてください。{custom}\nヘッドライン:\n{headlines}
 """,
-    "政治": """以下のヘッドラインから政治・外交・規制のニュースを分析し、投資家・VCとして影響を受ける可能性がある内容を日本語でまとめてください（300字以内）。
-規制変更、地政学リスク、政府政策の市場への影響を重点的に。
-
-ヘッドライン:
-{headlines}
+    "政治": """政治・外交・規制ニュースの市場への影響を投資家向けに日本語200字以内にまとめてください。{custom}\nヘッドライン:\n{headlines}
 """,
-    "日本": """以下のヘッドラインから日本の経済・ビジネス・テクノロジーのニュースを分析し、投資家として重要な内容を日本語でまとめてください（300字以内）。
-
-ヘッドライン:
-{headlines}
+    "日本": """日本の経済・ビジネス・テクノロジーニュースを投資家向けに日本語200字以内にまとめてください。{custom}\nヘッドライン:\n{headlines}
 """,
-    "株価": """以下の市場関連ニュースを基に、今日の株式市場の動きと投資判断に役立つポイントを日本語でまとめてください。
-
-【出力形式】
-## 📈 市場概況
-## 🎯 注目ポイント
-## ⚠️ リスク要因
-
-300字以内。
-
-ヘッドライン:
-{headlines}
+    "株価": """株式市場の動きを以下の形式で日本語200字以内にまとめてください。\n## 📈 市場概況\n## 🎯 注目ポイント\n## ⚠️ リスク要因\n{custom}\nヘッドライン:\n{headlines}
 """,
 }
 
@@ -260,7 +261,7 @@ def _file_cache_set(cache_key: str, content: str) -> None:
         pass
 
 
-def generate_ai_digest(headlines: list, digest_type: str = "総合") -> str:
+def generate_ai_digest(headlines: list, digest_type: str = "総合", custom: str = "") -> str:
     """ClaudeでAIダイジェストを生成（ファイルキャッシュ付き）"""
     if not headlines:
         return "ヘッドラインが取得できませんでした。"
@@ -277,7 +278,8 @@ def generate_ai_digest(headlines: list, digest_type: str = "総合") -> str:
         return "⚠️ ANTHROPIC_API_KEY が設定されていません。"
 
     prompt_template = DIGEST_PROMPTS.get(digest_type, DIGEST_PROMPTS["総合"])
-    prompt = prompt_template.format(headlines=h_text)
+    custom_section = f"\n【追加リサーチ指示】{custom}\n" if custom else ""
+    prompt = prompt_template.format(headlines=h_text, custom=custom_section, niche="")
 
     import time
     client = anthropic.Anthropic(api_key=api_key)
@@ -304,6 +306,79 @@ def generate_ai_digest(headlines: list, digest_type: str = "総合") -> str:
         except Exception as e:
             return f"❌ 生成エラー: {str(e)[:100]}"
     return "❌ サーバー混雑のため生成できませんでした。しばらくしてから再試行してください。"
+
+
+@st.cache_data(ttl=900, show_spinner=False)
+def get_niche_headlines(limit: int = 3) -> list:
+    """サイエンス・ニッチ情報を取得"""
+    items = []
+    for name, url in NICHE_SOURCES.items():
+        items.extend(fetch_feed(name, url)[:limit])
+    return items
+
+
+def generate_today_digest(
+    news_headlines: list,
+    niche_headlines: list,
+    custom: str = "",
+) -> str:
+    """今日のネタ: 主要ニュース + サイエンス・ニッチ話題を生成"""
+    api_key = _get_secret("ANTHROPIC_API_KEY") if False else os.getenv("ANTHROPIC_API_KEY", "")
+    # シークレットも試みる
+    if not api_key:
+        try:
+            import streamlit as _st
+            api_key = _st.secrets.get("ANTHROPIC_API_KEY", "")
+        except Exception:
+            pass
+    if not api_key:
+        return "⚠️ ANTHROPIC_API_KEY が設定されていません。"
+
+    news_text  = "\n".join(f"・{h['title']}" for h in news_headlines[:15] if h.get("title"))
+    niche_text = "\n".join(f"・[{h['source']}] {h['title']}" for h in niche_headlines[:8] if h.get("title"))
+    custom_section = f"\n【追加リサーチ指示】\n{custom}\n" if custom else ""
+
+    prompt = DIGEST_PROMPTS["今日のネタ"].format(
+        headlines=news_text,
+        niche=niche_text,
+        custom=custom_section,
+    )
+
+    import time
+    client = anthropic.Anthropic(api_key=api_key)
+    for attempt in range(3):
+        try:
+            resp = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=1000,
+                system=[{
+                    "type": "text",
+                    "text": "あなたは多忙な投資家・VCのための情報キュレーターです。簡潔・具体的・読みやすい日本語で書いてください。",
+                    "cache_control": {"type": "ephemeral"},
+                }],
+                messages=[{"role": "user", "content": prompt}],
+            )
+            return resp.content[0].text
+        except anthropic.APIStatusError as e:
+            if e.status_code == 529 and attempt < 2:
+                time.sleep(10 * (attempt + 1))
+            else:
+                return f"❌ 生成エラー: {str(e)[:100]}"
+        except Exception as e:
+            return f"❌ 生成エラー: {str(e)[:100]}"
+    return "❌ サーバー混雑のため生成できませんでした。しばらくしてから再試行してください。"
+
+
+def _get_secret(key: str) -> str:
+    """ローカル環境変数またはStreamlit secretsから取得"""
+    val = os.getenv(key, "")
+    if val:
+        return val
+    try:
+        import streamlit as _st
+        return _st.secrets.get(key, "")
+    except Exception:
+        return ""
 
 
 def _build_stock_prompt(data: dict, news_items: list) -> tuple[str, str]:

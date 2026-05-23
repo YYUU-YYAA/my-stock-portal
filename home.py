@@ -8,7 +8,8 @@ from core.sidebar import render_topnav
 from core.news import (
     MEDIA_SOURCES, CATEGORY_ORDER,
     get_all_headlines, get_category_headlines, get_source_headlines,
-    generate_ai_digest,
+    get_niche_headlines, generate_ai_digest, generate_today_digest,
+    fetch_feed,
 )
 from utils import (
     TRENDING_US, TRENDING_JP,
@@ -40,7 +41,43 @@ st.markdown("""
 render_topnav()
 
 st.markdown("# 📰 ニュース & マーケット")
-st.caption(f"最終更新: ニュース15分キャッシュ ／ AIダイジェスト1時間キャッシュ")
+
+# ============================================================
+# 今日のネタ（最上部・常設）
+# ============================================================
+with st.container():
+    st.markdown('<div class="section-h">🌅 今日のネタ</div>', unsafe_allow_html=True)
+
+    c_inp, c_btn = st.columns([4, 1])
+    with c_inp:
+        today_custom = st.text_input(
+            "", placeholder="🔍 追加でリサーチしてほしいことを入力（例: 半導体の最新動向、円安の影響、AIエージェントの事例）",
+            key="today_custom", label_visibility="collapsed",
+        )
+    with c_btn:
+        gen_today = st.button("🤖 生成", type="primary", use_container_width=True, key="gen_today")
+
+    if gen_today:
+        st.session_state.pop("digest_今日のネタ", None)
+
+    if gen_today or st.session_state.get("digest_今日のネタ"):
+        if not st.session_state.get("digest_今日のネタ"):
+            with st.spinner("ニュース＋サイエンス情報を分析中..."):
+                news_items  = get_all_headlines(limit_per_source=4)
+                niche_items = get_niche_headlines(limit=3)
+                result = generate_today_digest(news_items, niche_items, today_custom)
+            st.session_state["digest_今日のネタ"] = result
+
+        digest_today = st.session_state["digest_今日のネタ"]
+        st.markdown(
+            f'<div class="digest-box">{digest_today.replace(chr(10), "<br>")}</div>',
+            unsafe_allow_html=True,
+        )
+        if st.button("🔄 再生成", key="regen_today"):
+            st.session_state.pop("digest_今日のネタ", None)
+            st.rerun()
+
+st.markdown("---")
 
 # ============================================================
 # タブ構成: 総合 | 分野別 | メディア別 | 株価
@@ -58,27 +95,44 @@ tab_all, tab_cat, tab_media, tab_mkt = st.tabs([
 with tab_all:
     st.markdown('<div class="section-h">🤖 AIニュースダイジェスト（全ソース統合）</div>', unsafe_allow_html=True)
 
+    all_custom = st.text_input(
+        "", placeholder="🔍 追加でリサーチしてほしいことを入力（任意）",
+        key="all_custom", label_visibility="collapsed",
+    )
     col_gen, col_info = st.columns([2, 5])
     with col_gen:
         gen_all = st.button("🔄 AIダイジェスト生成", type="primary",
                             use_container_width=True, key="gen_all")
     with col_info:
-        st.caption("全ニュースソースを統合してClaudeが1〜2分で読めるダイジェストを生成します（初回のみ数秒かかります）")
+        st.caption("全ニュースソースを統合してClaudeが1〜2分で読めるダイジェストを生成します")
+
+    if gen_all:
+        st.session_state.pop("digest_総合", None)
 
     if gen_all or st.session_state.get("digest_総合"):
-        with st.spinner("AIがニュースを分析中..."):
-            headlines = get_all_headlines(limit_per_source=6)
-            digest = generate_ai_digest(headlines, "総合")
-        st.session_state["digest_総合"] = digest
-        st.markdown(f'<div class="digest-box">{digest.replace(chr(10), "<br>")}</div>',
-                    unsafe_allow_html=True)
+        if not st.session_state.get("digest_総合"):
+            with st.spinner("AIがニュースを分析中..."):
+                headlines = get_all_headlines(limit_per_source=6)
+                digest = generate_ai_digest(headlines, "総合", all_custom)
+            st.session_state["digest_総合"] = digest
+        st.markdown(
+            f'<div class="digest-box">{st.session_state["digest_総合"].replace(chr(10), "<br>")}</div>',
+            unsafe_allow_html=True,
+        )
 
-    st.markdown('<div class="section-h">📡 最新ヘッドライン（全ソース）</div>', unsafe_allow_html=True)
+    # ---- 最新ヘッドライン（限定4ソース） ----
+    st.markdown('<div class="section-h">📡 最新ヘッドライン</div>', unsafe_allow_html=True)
 
-    all_items = get_all_headlines(limit_per_source=5)
-    if all_items:
+    HEADLINE_SOURCES = ["Bloomberg", "日経 (GNews)", "NHK", "The Bridge JP"]
+    headline_items = []
+    for src in HEADLINE_SOURCES:
+        cfg = MEDIA_SOURCES.get(src)
+        if cfg:
+            headline_items.extend(fetch_feed(src, cfg["url"])[:5])
+
+    if headline_items:
         col_a, col_b = st.columns(2)
-        for i, item in enumerate(all_items[:24]):
+        for i, item in enumerate(headline_items[:24]):
             col = col_a if i % 2 == 0 else col_b
             with col:
                 summ = f"<div style='color:#666;font-size:0.78em;margin-top:3px'>{item['summary']}</div>" if item.get("summary") else ""
@@ -101,7 +155,10 @@ with tab_cat:
 
     for cat_tab, category in zip(cat_tabs, CATEGORY_ORDER):
         with cat_tab:
-            # AI ダイジェスト
+            cat_custom = st.text_input(
+                "", placeholder="🔍 追加でリサーチしてほしいことを入力（任意）",
+                key=f"cat_custom_{category}", label_visibility="collapsed",
+            )
             col_g, col_inf = st.columns([2, 5])
             with col_g:
                 gen_cat = st.button(f"🤖 AIダイジェスト生成",
@@ -117,19 +174,23 @@ with tab_cat:
                 }
                 st.caption(cat_desc.get(category, ""))
 
+            if gen_cat:
+                st.session_state.pop(f"digest_{category}", None)
+
             if gen_cat or st.session_state.get(f"digest_{category}"):
-                with st.spinner("生成中..."):
-                    cat_headlines = get_category_headlines(category, limit=30)
-                    digest = generate_ai_digest(cat_headlines, category)
-                st.session_state[f"digest_{category}"] = digest
-                st.markdown(f'<div class="digest-box">{digest.replace(chr(10), "<br>")}</div>',
-                            unsafe_allow_html=True)
+                if not st.session_state.get(f"digest_{category}"):
+                    with st.spinner("生成中..."):
+                        cat_headlines = get_category_headlines(category, limit=30)
+                        digest = generate_ai_digest(cat_headlines, category, cat_custom)
+                    st.session_state[f"digest_{category}"] = digest
+                st.markdown(
+                    f'<div class="digest-box">{st.session_state[f"digest_{category}"].replace(chr(10), "<br>")}</div>',
+                    unsafe_allow_html=True,
+                )
 
             # ヘッドライン
             st.markdown(f"**ヘッドライン — {category}**")
-            cat_items = get_category_headlines(category, limit=20)
 
-            # ソース別にグループ化して表示
             sources_in_cat = {n: c for n, c in MEDIA_SOURCES.items() if c["category"] == category}
             if sources_in_cat:
                 src_tabs = st.tabs([f"{cfg['icon']} {name}" for name, cfg in sources_in_cat.items()])
@@ -152,13 +213,53 @@ with tab_cat:
 # ============================================================
 with tab_media:
     media_names = list(MEDIA_SOURCES.keys())
-    media_tab_labels = [f"{MEDIA_SOURCES[n]['icon']} {n}" for n in media_names]
+
+    # ---- メディア表示順の管理（session_state） ----
+    if "media_order" not in st.session_state:
+        st.session_state.media_order = media_names.copy()
+    else:
+        # 新しく追加されたソースを末尾に追加
+        for n in media_names:
+            if n not in st.session_state.media_order:
+                st.session_state.media_order.append(n)
+        # 削除されたソースを除去
+        st.session_state.media_order = [n for n in st.session_state.media_order if n in media_names]
+
+    ordered_media = st.session_state.media_order
+
+    # ---- 並び替えUI ----
+    with st.expander("🔀 メディアの表示順を変更"):
+        st.caption("↑↓ で並び替えできます")
+        for idx, mname in enumerate(ordered_media):
+            icon = MEDIA_SOURCES[mname]["icon"]
+            col_u, col_d, col_lbl = st.columns([1, 1, 8])
+            with col_u:
+                if st.button("↑", key=f"mo_up_{idx}", disabled=(idx == 0),
+                             use_container_width=True):
+                    ordered_media[idx], ordered_media[idx - 1] = ordered_media[idx - 1], ordered_media[idx]
+                    st.session_state.media_order = ordered_media
+                    st.rerun()
+            with col_d:
+                if st.button("↓", key=f"mo_dn_{idx}", disabled=(idx == len(ordered_media) - 1),
+                             use_container_width=True):
+                    ordered_media[idx], ordered_media[idx + 1] = ordered_media[idx + 1], ordered_media[idx]
+                    st.session_state.media_order = ordered_media
+                    st.rerun()
+            with col_lbl:
+                st.markdown(f"{icon} **{mname}**")
+
+    # ---- メディア別タブ ----
+    media_tab_labels = [f"{MEDIA_SOURCES[n]['icon']} {n}" for n in ordered_media]
     media_tabs = st.tabs(media_tab_labels)
 
-    for m_tab, media_name in zip(media_tabs, media_names):
+    for m_tab, media_name in zip(media_tabs, ordered_media):
         with m_tab:
             cfg = MEDIA_SOURCES[media_name]
 
+            media_custom = st.text_input(
+                "", placeholder="🔍 追加でリサーチしてほしいことを入力（任意）",
+                key=f"media_custom_{media_name}", label_visibility="collapsed",
+            )
             col_g2, col_inf2 = st.columns([2, 5])
             with col_g2:
                 gen_media = st.button("🤖 このメディアのダイジェスト",
@@ -166,14 +267,21 @@ with tab_media:
             with col_inf2:
                 st.caption(f"カテゴリ: {cfg['category']}")
 
+            if gen_media:
+                st.session_state.pop(f"digest_media_{media_name}", None)
+
             if gen_media or st.session_state.get(f"digest_media_{media_name}"):
-                items_for_ai = get_source_headlines(media_name)
-                if items_for_ai:
-                    with st.spinner("生成中..."):
-                        digest = generate_ai_digest(items_for_ai, "総合")
-                    st.session_state[f"digest_media_{media_name}"] = digest
-                    st.markdown(f'<div class="digest-box">{digest.replace(chr(10), "<br>")}</div>',
-                                unsafe_allow_html=True)
+                if not st.session_state.get(f"digest_media_{media_name}"):
+                    items_for_ai = get_source_headlines(media_name)
+                    if items_for_ai:
+                        with st.spinner("生成中..."):
+                            digest = generate_ai_digest(items_for_ai, "総合", media_custom)
+                        st.session_state[f"digest_media_{media_name}"] = digest
+                if st.session_state.get(f"digest_media_{media_name}"):
+                    st.markdown(
+                        f'<div class="digest-box">{st.session_state[f"digest_media_{media_name}"].replace(chr(10), "<br>")}</div>',
+                        unsafe_allow_html=True,
+                    )
 
             # ヘッドライン
             items = get_source_headlines(media_name)
@@ -197,6 +305,10 @@ with tab_mkt:
     # ---- AI市場ダイジェスト ----
     st.markdown('<div class="section-h">🤖 AI 市場ダイジェスト（24h）</div>', unsafe_allow_html=True)
 
+    mkt_custom = st.text_input(
+        "", placeholder="🔍 追加でリサーチしてほしいことを入力（例: Fed政策、半導体セクター）",
+        key="mkt_custom", label_visibility="collapsed",
+    )
     col_mg, col_mi = st.columns([2, 5])
     with col_mg:
         gen_mkt = st.button("🤖 市場ダイジェスト生成", key="gen_mkt",
@@ -204,13 +316,19 @@ with tab_mkt:
     with col_mi:
         st.caption("経済・株価ニュースからClaudeが24時間の市場サマリーを生成します")
 
+    if gen_mkt:
+        st.session_state.pop("digest_株価", None)
+
     if gen_mkt or st.session_state.get("digest_株価"):
-        with st.spinner("市場を分析中..."):
-            mkt_headlines = get_category_headlines("経済", limit=30)
-            mkt_digest = generate_ai_digest(mkt_headlines, "株価")
-        st.session_state["digest_株価"] = mkt_digest
-        st.markdown(f'<div class="digest-box">{mkt_digest.replace(chr(10), "<br>")}</div>',
-                    unsafe_allow_html=True)
+        if not st.session_state.get("digest_株価"):
+            with st.spinner("市場を分析中..."):
+                mkt_headlines = get_category_headlines("経済", limit=30)
+                mkt_digest = generate_ai_digest(mkt_headlines, "株価", mkt_custom)
+            st.session_state["digest_株価"] = mkt_digest
+        st.markdown(
+            f'<div class="digest-box">{st.session_state["digest_株価"].replace(chr(10), "<br>")}</div>',
+            unsafe_allow_html=True,
+        )
 
     # ---- 主要指数ミニチャート ----
     st.markdown('<div class="section-h">📊 主要指数チャート（6ヶ月）</div>', unsafe_allow_html=True)
@@ -257,7 +375,6 @@ with tab_mkt:
                         <div style="color:{color};font-size:0.85em">{sign}{chg:.2f}%</div>
                     </div>
                     """, unsafe_allow_html=True)
-                    # cat_idx を key に含めて重複を防ぐ
                     if st.button("分析", key=f"mkt_an_{cat_idx}_{i}_{sym}",
                                  use_container_width=True):
                         st.session_state.active_ticker = sym
