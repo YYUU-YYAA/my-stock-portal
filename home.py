@@ -9,7 +9,6 @@ from core.news import (
     MEDIA_SOURCES, CATEGORY_ORDER,
     get_all_headlines, get_category_headlines, get_source_headlines,
     get_niche_headlines, generate_ai_digest, generate_today_digest,
-    fetch_feed,
 )
 from utils import (
     TRENDING_US, TRENDING_JP,
@@ -126,9 +125,7 @@ with tab_all:
     HEADLINE_SOURCES = ["Bloomberg", "日経 (GNews)", "NHK", "The Bridge JP"]
     headline_items = []
     for src in HEADLINE_SOURCES:
-        cfg = MEDIA_SOURCES.get(src)
-        if cfg:
-            headline_items.extend(fetch_feed(src, cfg["url"])[:5])
+        headline_items.extend(get_source_headlines(src)[:5])
 
     if headline_items:
         col_a, col_b = st.columns(2)
