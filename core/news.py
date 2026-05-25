@@ -21,6 +21,10 @@ CACHE_DIR = Path(__file__).parent.parent / "data" / "digest_cache"
 # ============================================================
 MEDIA_SOURCES = {
     # ──── 経済・金融 ────
+    "CNBC": {
+        "url": "https://www.cnbc.com/id/100003114/device/rss/rss.html",
+        "icon": "📡", "category": "経済",
+    },
     "Bloomberg": {
         "url": "https://news.google.com/rss/search?q=bloomberg+market+finance&hl=en&gl=US&ceid=US:en",
         "icon": "💹", "category": "経済",
@@ -47,13 +51,13 @@ MEDIA_SOURCES = {
         "icon": "🌉", "category": "VC",
     },
     # ──── 日本語 ────
-    "NHK": {
+    "NHK総合": {
         "url": "https://www.nhk.or.jp/rss/news/cat0.xml",
         "icon": "🇯🇵", "category": "日本",
     },
-    "日経 (GNews)": {
-        "url": "https://news.google.com/rss/search?q=日経+株価+経済&hl=ja&gl=JP&ceid=JP:ja",
-        "icon": "📊", "category": "日本",
+    "日経新聞": {
+        "url": "https://news.google.com/rss/search?q=site:nikkei.com&hl=ja&gl=JP&ceid=JP:ja",
+        "icon": "📰", "category": "日本",
     },
 }
 
@@ -367,6 +371,24 @@ def generate_today_digest(
         except Exception as e:
             return f"❌ 生成エラー: {str(e)[:100]}"
     return "❌ サーバー混雑のため生成できませんでした。しばらくしてから再試行してください。"
+
+
+# まとめ記事判定キーワード
+_SUMMARY_KEYWORDS = [
+    # 日本語
+    "まとめ", "ダイジェスト", "朝刊", "夕刊", "ニュース速報まとめ", "今日の主な",
+    "週間まとめ", "本日の", "きょうの",
+    # 英語
+    "wrap", "roundup", "recap", "morning brief", "evening brief",
+    "5 things", "this morning", "today in", "what to watch",
+    "the day ahead", "market minute", "daily digest", "headlines",
+]
+
+
+def is_summary_article(title: str) -> bool:
+    """タイトルがまとめ・ダイジェスト系記事かどうか判定"""
+    t = title.lower()
+    return any(kw in t for kw in _SUMMARY_KEYWORDS)
 
 
 def _get_secret(key: str) -> str:

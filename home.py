@@ -9,6 +9,7 @@ from core.news import (
     MEDIA_SOURCES, CATEGORY_ORDER,
     get_all_headlines, get_category_headlines, get_source_headlines,
     get_niche_headlines, generate_ai_digest, generate_today_digest,
+    is_summary_article,
 )
 from utils import (
     TRENDING_US, TRENDING_JP,
@@ -33,6 +34,8 @@ st.markdown("""
 .section-h{font-size:1.2em;font-weight:700;border-left:4px solid #1a73e8;
            padding-left:10px;margin:14px 0 8px}
 .mkt-box{text-align:center;padding:10px;background:#f8f9fa;border-radius:8px}
+.nc-summary{background:linear-gradient(135deg,#fffbf0,#fff8e1);
+            border:1px solid #f9c84a;border-left:4px solid #f9a825 !important;border-radius:8px}
 </style>
 """, unsafe_allow_html=True)
 
@@ -119,17 +122,33 @@ with tab_all:
             unsafe_allow_html=True,
         )
 
-    # ---- 最新ヘッドライン（限定4ソース） ----
+    # ---- 最新ヘッドライン（CNBC・日経新聞・NHK総合） ----
     st.markdown('<div class="section-h">📡 最新ヘッドライン</div>', unsafe_allow_html=True)
 
-    HEADLINE_SOURCES = ["Bloomberg", "日経 (GNews)", "NHK", "The Bridge JP"]
+    HEADLINE_SOURCES = ["CNBC", "日経新聞", "NHK総合"]
     headline_items = []
     for src in HEADLINE_SOURCES:
-        headline_items.extend(get_source_headlines(src)[:5])
+        headline_items.extend(get_source_headlines(src)[:8])
 
     if headline_items:
+        summary_items = [item for item in headline_items if is_summary_article(item["title"])]
+        regular_items = [item for item in headline_items if not is_summary_article(item["title"])]
+
+        # まとめ記事を上部に表示
+        if summary_items:
+            st.markdown('<div class="section-h" style="font-size:1em;color:#b8860b">📋 今日のまとめ記事</div>', unsafe_allow_html=True)
+            for item in summary_items[:6]:
+                st.markdown(f"""
+                <div class="nc nc-summary">
+                    <a href="{item['link']}" target="_blank">{item['title']}</a>
+                    <div class="nc-meta">📌 {item['source']} &nbsp;·&nbsp; {item['published']}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            st.markdown("<div style='margin-bottom:8px'></div>", unsafe_allow_html=True)
+
+        # 通常記事を2列表示
         col_a, col_b = st.columns(2)
-        for i, item in enumerate(headline_items[:24]):
+        for i, item in enumerate(regular_items[:24]):
             col = col_a if i % 2 == 0 else col_b
             with col:
                 summ = f"<div style='color:#666;font-size:0.78em;margin-top:3px'>{item['summary']}</div>" if item.get("summary") else ""
